@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B. Rufus | Smart Irrigation Intelligence Hub</title>
+    <style>
+        :root { --bg: #0b0e11; --card: #161b22; --text: #c9d1d9; --primary: #238636; --danger: #da3633; --accent: #58a6ff; --warning: #f1c40f; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Weather Bar Styling */
+        .weather-banner { background: rgba(88, 166, 255, 0.05); border: 1px solid #30363d; border-radius: 12px; padding: 12px 20px; width: 100%; max-width: 850px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        
+        .container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; width: 100%; max-width: 1000px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; width: 160px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border-top: 4px solid #30363d; transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .value { font-size: 2.2rem; font-weight: bold; margin: 10px 0; }
+        .label { font-size: 0.8rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+
+        .pulse { animation: pulse-green 2s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(35, 134, 54, 0); } 100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0); } }
+
+        .pump-ui { margin-top: 30px; padding: 25px; background: var(--card); border-radius: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 450px; border: 1px solid #30363d; }
+        .btn { padding: 12px; font-size: 1rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px; }
+        .btn-on { background: var(--primary); color: white; }
+        .btn-off { background: var(--danger); color: white; }
+        
+        input[type=range] { width: 100%; margin: 15px 0; cursor: pointer; accent-color: var(--warning); }
+        input[type=password] { padding: 12px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; width: 85%; text-align: center; margin-bottom: 10px; }
+
+        .log-box { margin-top: 30px; width: 100%; max-width: 600px; background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #30363d; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { border-bottom: 1px solid #30363d; padding: 10px; color: #8b949e; text-align: left; }
+        td { padding: 8px 10px; border-bottom: 1px solid #21262d; }
+
+        @media (max-width: 600px) { .weather-banner { flex-direction: column; gap: 10px; text-align: center; } .card { width: 40%; } }
+    </style>
+</head>
+<body>
+
+    <h1 style="margin-bottom: 10px;">Smart Irrigation System</h1>
+
+    <div class="weather-banner">
+        <div id="city">📍 Chennai, TN</div>
+        <div id="temp-out" style="font-weight: bold; color: var(--warning);">33.4°C (Outdoors)</div>
+        <div id="weather-desc" style="font-style: italic; color: var(--accent);">CLEAR SKY</div>
+        <div id="irrigation-advice" style="font-weight: bold; padding-left: 15px; border-left: 2px solid #30363d;">STABLE: OK TO WATER</div>
+    </div>
+    
+    <div style="margin-bottom: 25px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
+        <span id="status-dot" style="height: 10px; width: 10px; background-color: #238636; border-radius: 50%; display: inline-block;" class="pulse"></span>
+        <span id="status-text" style="color: #238636; font-weight: bold;">HARDWARE ONLINE</span>
+        <span style="color: #8b949e; margin-left: 10px;">Last Sync: <span id="sync-time">--:--:--</span></span>
+    </div>
+
+    <div class="container">
+        <div class="card" style="border-color: #ff9800;"><div class="label">Temp</div><div class="value" id="v0" style="color:#ff9800">--</div><div>°C</div></div>
+        <div class="card" style="border-color: #00d2ff;"><div class="label">Humidity</div><div class="value" id="v1" style="color:#00d2ff">--</div><div>%</div></div>
+        <div class="card" style="border-color: #58a6ff;"><div class="label">Soil</div><div class="value" id="v2" style="color:#58a6ff">--</div><div>(Raw)</div></div>
+        <div class="card" style="border-color: #f1c40f;"><div class="label">V6 Limit</div><div class="value" id="v6-card" style="color:#f1c40f">--</div><div>(Target)</div></div>
+    </div>
+
+    <div class="pump-ui">
+        <h3 style="margin-top:0">System Command Center</h3>
+        <div id="pump-status" style="font-weight: bold; margin-bottom: 20px; color: var(--danger);">STATUS: STANDBY</div>
+        
+        <div style="width: 100%; padding: 15px; background: #0d1117; border-radius: 10px; margin-bottom: 20px; border: 1px solid #30363d;">
+            <label style="font-size: 0.75rem; color: #8b949e; display: block; margin-bottom: 8px;">
+                CALIBRATE SOIL THRESHOLD: <span id="v6-slider-val" style="color: var(--warning); font-weight: bold;">1521</span>
+            </label>
+            <input type="range" id="threshold-slider" min="0" max="4095" value="1521" onchange="sendV6(this.value)">
+            <div style="display: flex; justify-content: space-between; font-size: 0.6rem; color: #484f58;"><span>WET (0)</span><span>DRY (4095)</span></div>
+        </div>
+
+        <input type="password" id="pin-input" placeholder="Enter Security PIN">
+        <button id="pump-btn" class="btn btn-on" onclick="checkPinAndToggle()">VERIFY & START PUMP</button>
+        <p id="error-msg" style="color: var(--danger); display: none; margin-top: 10px; font-size: 0.8rem;">Access Denied: Invalid PIN!</p>
+    </div>
+
+    <div class="log-box">
+        <h4 style="margin: 0 0 10px 0; text-align: center;">Activity Logs</h4>
+        <div style="height: 150px; overflow-y: auto;">
+            <table>
+                <thead><tr><th>Time</th><th>Event</th><th>Status</th></tr></thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const blynkToken = "vZykZe-qH-g268WU8oe_a6kmDa8eT8ot";
+        const weatherKey = "94a7d7325ac03de373907a5d6e59c574";
+        const MY_PIN = "1234";
+        let pumpState = 0;
+        let lastState = null;
+
+        function addLog(msg, color) {
+            const body = document.getElementById('log-body');
+            const row = `<tr><td>${new Date().toLocaleTimeString()}</td><td>${msg}</td><td style="color:${color}">●</td></tr>`;
+            body.insertAdjacentHTML('afterbegin', row);
+            if (body.children.length > 6) body.removeChild(body.lastChild);
+        }
+
+        async function checkWeather() {
+            try {
+                const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Chennai&appid=${weatherKey}&units=metric`);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                document.getElementById('temp-out').innerText = Math.round(data.main.temp) + "°C (Outdoors)";
+                document.getElementById('weather-desc').innerText = data.weather[0].description.toUpperCase();
+                
+                const advice = document.getElementById('irrigation-advice');
+                const cond = data.weather[0].main;
+                if (cond === "Rain" || cond === "Drizzle") {
+                    advice.innerText = "RAIN: SYSTEM PAUSED"; advice.style.color = "#58a6ff";
+                } else if (data.main.temp > 35) {
+                    advice.innerText = "HEAT: WATER NEEDED"; advice.style.color = "#ff9800";
+                } else {
+                    advice.innerText = "STABLE: OK TO WATER"; advice.style.color = "#238636";
+                }
+            } catch (e) { 
+                document.getElementById('weather-desc').innerText = "SYNC OFFLINE";
+                document.getElementById('irrigation-advice').innerText = "USING SENSOR ONLY";
+            }
+        }
+
+        async function sendV6(val) {
+            document.getElementById('v6-slider-val').innerText = val;
+            try {
+                await fetch(`https://blynk.cloud/external/api/update?token=${blynkToken}&V6=${val}`);
+                addLog("Threshold Calibrated to " + val, "#f1c40f");
+            } catch (e) { console.log("Update Failed"); }
+        }
+
+        async function update() {
+            try {
+                const [t, h, m, p, v5, v6] = await Promise.all([
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V0`).then(r => r.text()),
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V1`).then(r => r.text()),
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V2`).then(r => r.text()),
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V4`).then(r => r.text()),
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V5`).then(r => r.text()),
+                    fetch(`https://blynk.cloud/external/api/get?token=${blynkToken}&V6`).then(r => r.text())
+                ]);
+
+                document.getElementById('v0').innerText = parseFloat(t).toFixed(1);
+                document.getElementById('v1').innerText = parseFloat(h).toFixed(1);
+                document.getElementById('v2').innerText = m;
+                document.getElementById('v6-card').innerText = v6;
+
+                if (document.activeElement.id !== "threshold-slider") {
+                    document.getElementById('threshold-slider').value = v6;
+                    document.getElementById('v6-slider-val').innerText = v6;
+                }
+
+                const dot = document.getElementById('status-dot');
+                const txt = document.getElementById('status-text');
+                if (v5 == "1") {
+                    dot.style.backgroundColor = "#238636"; txt.innerText = "HARDWARE ONLINE"; txt.style.color = "#238636"; dot.classList.add('pulse');
+                } else {
+                    dot.style.backgroundColor = "#da3633"; txt.innerText = "HARDWARE OFFLINE"; txt.style.color = "#da3633"; dot.classList.remove('pulse');
+                }
+
+                pumpState = parseInt(p);
+                const btn = document.getElementById('pump-btn');
+                const status = document.getElementById('pump-status');
+                if(pumpState === 1) {
+                    status.innerText = "STATUS: RUNNING"; status.style.color = "#238636";
+                    btn.innerText = "STOP PUMP"; btn.className = "btn btn-off";
+                } else {
+                    status.innerText = "STATUS: STANDBY"; status.style.color = "#da3633";
+                    btn.innerText = "START PUMP"; btn.className = "btn btn-on";
+                }
+
+                if (lastState !== null && pumpState !== lastState) {
+                    addLog(pumpState === 1 ? "Pump Started" : "Pump Stopped", pumpState === 1 ? "#238636" : "#da3633");
+                }
+                lastState = pumpState;
+                document.getElementById('sync-time').innerText = new Date().toLocaleTimeString();
+            } catch (e) { document.getElementById('status-text').innerText = "CONNECTION ERROR"; }
+        }
+
+        async function checkPinAndToggle() {
+            const input = document.getElementById('pin-input').value;
+            if (input === MY_PIN) {
+                document.getElementById('error-msg').style.display = "none";
+                const next = pumpState === 1 ? 0 : 1;
+                await fetch(`https://blynk.cloud/external/api/update?token=${blynkToken}&V4=${next}`);
+                addLog("Secure Access: Valid PIN", "#58a6ff");
+                document.getElementById('pin-input').value = "";
+                setTimeout(update, 500);
+            } else {
+                document.getElementById('error-msg').style.display = "block";
+                addLog("Security Alert: Invalid PIN", "#da3633");
+            }
+        }
+
+        checkWeather();
+        setInterval(checkWeather, 900000); 
+        setInterval(update, 3000);
+        update();
+    </script>
+</body>
+</html>
